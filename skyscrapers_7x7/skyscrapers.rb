@@ -1,57 +1,30 @@
 class Skyscrapers
   attr_reader :all_possible_combinations, :possible_column_combinations, :possible_row_combinations, :grid
 
-  SIZE = 7
-
   def initialize(clues:, grid: nil, all_possible_combinations: nil, possible_row_combinations: nil, possible_column_combinations: nil)
     @clues = clues
-    @clue_column_set = [
-      [clues[0], clues[20]],
-      [clues[1], clues[19]],
-      [clues[2], clues[18]],
-      [clues[3], clues[17]],
-      [clues[4], clues[16]],
-      [clues[5], clues[15]],
-      [clues[6], clues[14]]
-    ]
-    @clue_row_set = [
-      [clues[27], clues[7]],
-      [clues[26], clues[8]],
-      [clues[25], clues[9]],
-      [clues[24], clues[10]],
-      [clues[23], clues[11]],
-      [clues[22], clues[12]],
-      [clues[21], clues[13]]
-    ]
-    @grid = grid || [
-      [0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0]
-    ]
-    unless solved?
-      @all_possible_combinations = all_possible_combinations || generate_possible_combinations
-      @possible_column_combinations = possible_column_combinations || @clue_column_set.map { |arr| find_possible_combinations(*arr) }
-      @possible_row_combinations = possible_row_combinations || @clue_row_set.map { |arr| find_possible_combinations(*arr) }
-      @possible_row_combinations = cross_check(@possible_row_combinations, @possible_column_combinations)
-      @possible_column_combinations = cross_check(@possible_column_combinations, @possible_row_combinations)
-    end
+    @size = @clues.size / 4
+    clues_chunk = @clues.each_slice(@size).to_a
+    @clue_column_set = clues_chunk[0].zip(clues_chunk[2].reverse)
+    @clue_row_set = (clues_chunk[3].reverse).zip(clues_chunk[1])
+    @grid = grid || Array.new(@size, Array.new(@size, 0)).map(&:dup)
+    @all_possible_combinations = all_possible_combinations || generate_possible_combinations
+    @possible_column_combinations = possible_column_combinations || @clue_column_set.map { |arr| find_possible_combinations(*arr) }
+    @possible_row_combinations = possible_row_combinations || @clue_row_set.map { |arr| find_possible_combinations(*arr) }
+    @possible_row_combinations = cross_check(@possible_row_combinations, @possible_column_combinations)
+    @possible_column_combinations = cross_check(@possible_column_combinations, @possible_row_combinations)
   end
 
   def main_process
-    (0...SIZE).each do |row_i|
+    (0...@size).each do |row_i|
       next unless @grid[row_i].include?(0)
 
-      (0...SIZE).each do |col_j|
+      (0...@size).each do |col_j|
         next unless @grid[row_i][col_j] == 0
 
-        # false якщо немає можливих комбінацій
         return false if @possible_row_combinations.dig(row_i, 0, col_j).nil?
 
-        # якщо якийсь єлемент зустрічаеться у всіх комбінаціяї, тоді він є рішенням
+        # if one number is present in all combinations then it is a right number
         if check_element(@possible_row_combinations[row_i][0][col_j], col_j, @possible_row_combinations[row_i])
           @grid[row_i][col_j] = @possible_row_combinations[row_i][0][col_j]
           @possible_row_combinations = filter_possible_combinations(@possible_row_combinations, row_i, col_j, @grid[row_i][col_j])
@@ -96,14 +69,14 @@ class Skyscrapers
 
         begin
           unless sky_instans.solved?
-            10.times do
+            @size.times do
               grid_before = sky_instans.grid.dup
               raise unless sky_instans.main_process
 
               break if grid_before == sky_instans.grid
             end
           end
-        rescue => e
+        rescue
           next
         end
 
@@ -119,39 +92,17 @@ class Skyscrapers
       end
     end
 
-    if solved? && valid?
-      return true
-    else
-      # binding.pry
-      false
-    end
+    solved? && valid?
   end
 
-  def generate_possible_combinations(c_0=nil, c_1=nil, c_2=nil, c_3=nil, c_4=nil, c_5=nil, c_6=nil)
-    arr = [1, 2, 3, 4, 5, 6, 7]
-    c_0 ||= arr
-    c_1 ||= arr
-    c_2 ||= arr
-    c_3 ||= arr
-    c_4 ||= arr
-    c_5 ||= arr
-    c_6 ||= arr
-    c_7 ||= arr
-
+  def generate_possible_combinations(deep = 1, previous_values = [])
     possible = []
-    c_0.each do |el_0|
-      (c_1 - [el_0]).each do |el_1|
-        (c_2 - [el_0, el_1]).each do |el_2|
-          (c_3 - [el_0, el_1, el_2]).each do |el_3|
-            (c_4 - [el_0, el_1, el_2, el_3]).each do |el_4|
-              (c_5 - [el_0, el_1, el_2, el_3, el_4]).each do |el_5|
-                (c_6 - [el_0, el_1, el_2, el_3, el_4, el_5]).each do |el_6|
-                  possible << [el_0, el_1, el_2, el_3, el_4, el_5, el_6]
-                end
-              end
-            end
-          end
-        end
+
+    ((1..@size).to_a - previous_values).each do |el|
+      if deep == @size
+        possible << previous_values + [el]
+      else
+        possible += generate_possible_combinations(deep+1, previous_values + [el])
       end
     end
 
@@ -203,23 +154,20 @@ class Skyscrapers
   end
 
   def cross_check(first_combinations, second_combinations)
-    out = [[], [], [], [], [], [], []]
-
+    out = Array.new(@size, [])
     present_numbers = combinations_to_numbers(second_combinations)
 
-    (0...SIZE).each do |i|
+    (0...@size).each do |i|
       out_i = []
 
       first_combinations[i].each do |first_combination|
-        if present_numbers[0][i].include?(first_combination[0]) &&
-          present_numbers[1][i].include?(first_combination[1]) &&
-          present_numbers[2][i].include?(first_combination[2]) &&
-          present_numbers[3][i].include?(first_combination[3]) &&
-          present_numbers[4][i].include?(first_combination[4]) &&
-          present_numbers[5][i].include?(first_combination[5]) &&
-          present_numbers[6][i].include?(first_combination[6])
-          out_i << first_combination
+        out_j = []
+
+        @size.times do |j|
+          out_j << present_numbers[j][i].include?(first_combination[j])
         end
+
+        out_i << first_combination if out_j.count(true) == @size
       end
 
       out[i] = out_i
@@ -238,9 +186,9 @@ class Skyscrapers
   end
 
   def filter_possible_combinations(combinations, row_i, col_j, element)
-    out = [[], [], [], [], [], [], []]
+    out = Array.new(@size, [])
 
-    (0...SIZE).each do |index|
+    (0...@size).each do |index|
       if index == row_i
         out[index] = combinations[index].select { |el| el[col_j] == element }
       else
@@ -274,58 +222,22 @@ class Skyscrapers
   end
 
   def grid_as_columns
-    out = [[], [], [], [], [], [], []]
-
-    mapper = [
-      [0, 7, 14, 21, 28, 35, 42],
-      [1, 8, 15, 22, 29, 36, 43],
-      [2, 9, 16, 23, 30, 37, 44],
-      [3, 10, 17, 24, 31, 38, 45],
-      [4, 11, 18, 25, 32, 39, 46],
-      [5, 12, 19, 26, 33, 40, 47],
-      [6, 13, 20, 27, 34, 41, 48],
-    ]
-
-    arr = @grid.flatten
-
-    mapper.each_with_index do |i, index|
-      out[index] = [arr[i[0]], arr[i[1]], arr[i[2]], arr[i[3]], arr[i[4]], arr[i[5]], arr[i[6]]]
-    end
-
-    out
+    @grid.transpose
   end
 
   def combinations_to_numbers(combinations)
     present_numbers = []
 
-    (0...SIZE).each do |i|
-      present_numbers_i_0 = []
-      present_numbers_i_1 = []
-      present_numbers_i_2 = []
-      present_numbers_i_3 = []
-      present_numbers_i_4 = []
-      present_numbers_i_5 = []
-      present_numbers_i_6 = []
+    (0...@size).each do |i|
+      present_numbers_i = Array.new(@size) { Array.new }
 
       combinations[i].each do |combination|
-        present_numbers_i_0 << combination[0]
-        present_numbers_i_1 << combination[1]
-        present_numbers_i_2 << combination[2]
-        present_numbers_i_3 << combination[3]
-        present_numbers_i_4 << combination[4]
-        present_numbers_i_5 << combination[5]
-        present_numbers_i_6 << combination[6]
+        combination.each_with_index do |number, j|
+          present_numbers_i[j] << number
+        end
       end
 
-      present_numbers << [
-        present_numbers_i_0.uniq,
-        present_numbers_i_1.uniq,
-        present_numbers_i_2.uniq,
-        present_numbers_i_3.uniq,
-        present_numbers_i_4.uniq,
-        present_numbers_i_5.uniq,
-        present_numbers_i_6.uniq
-      ]
+      present_numbers << present_numbers_i.map(&:uniq)
     end
 
     present_numbers
