@@ -1,6 +1,8 @@
 require './skyscrapers'
 
 clues_list = [
+  [ 2,2,1,3, 2,2,3,1, 1,2,2,3, 3,2,1,3 ],
+  [ 0,0,1,2, 0,2,0,0, 0,3,0,0, 0,1,0,0 ],
   [ 3,2,2,3,2,1, 1,2,3,3,2,2, 5,1,2,2,4,3, 3,2,1,2,2,4 ],
   [ 0,0,0,2,2,0, 0,0,0,6,3,0, 0,4,0,0,0,0, 4,4,0,3,0,0 ],
   [ 0,3,0,5,3,4, 0,0,0,0,0,1, 0,3,0,3,2,3, 3,2,0,3,1,0 ],
@@ -11,6 +13,8 @@ clues_list = [
 ]
 
 expected_results = [
+  [ [1,3,4,2], [4,2,1,3], [3,4,2,1], [2,1,3,4] ],
+  [ [2,1,4,3], [3,4,1,2], [4,2,3,1], [1,3,2,4] ],
   [ [2,1,4,3,5,6], [1,6,3,2,4,5], [4,3,6,5,1,2], [6,5,2,1,3,4], [5,4,1,6,2,3], [3,2,5,4,6,1] ],
   [ [5,6,1,4,3,2], [4,1,3,2,6,5], [2,3,6,1,5,4], [6,5,4,3,2,1], [1,2,5,6,4,3], [3,4,2,5,1,6] ],
   [ [5,2,6,1,4,3], [6,4,3,2,5,1], [3,1,5,4,6,2], [2,6,1,5,3,4], [4,3,2,6,1,5], [1,5,4,3,2,6] ],
@@ -31,7 +35,8 @@ clues_list.each_with_index do |clues, index|
   s.guess unless s.solved?
 
   if s.grid == expected_results[index]
-    puts "Puzzle ##{index + 1} was solved in #{Time.now - local_time_start} seconds"
+    size = expected_results[index].size
+    puts "Puzzle ##{index + 1} (#{size}×#{size}) was solved in #{Time.now - local_time_start} seconds"
   else
     puts "OMG!!! it doesn't work, call BugBusters"
   end
